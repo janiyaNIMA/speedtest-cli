@@ -23,6 +23,7 @@ Featuring interactive progress bars, real-time transfer rates, ping radar animat
 
 ## 🖥️ Preview
 <img width="770" height="306" alt="live_results" src="https://github.com/user-attachments/assets/b5af87f1-3734-43b2-8470-84c4f13ee896" />
+<img width="795" height="303" alt="final_results" src="https://github.com/user-attachments/assets/6878d398-7d66-4d15-a37a-165ae575897b" /> 
 
 ---
 
