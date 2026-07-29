@@ -23,33 +23,10 @@ Featuring interactive progress bars, real-time transfer rates, ping radar animat
 
 ## 🖥️ Preview
 
-```text
-╭─────────────────────────────────────────────────────────────────────────╮
-│ 🚀 SPEEDTEST CLI  │  Internet Bandwidth & Network Performance           │
-╰─────────────────────────────────────────────────────────────────────────╯
+<img width="770" height="306" alt="live_results" src="https://github.com/user-attachments/assets/b5af87f1-3734-43b2-8470-84c4f13ee896" />
+<img width="795" height="303" alt="final_results" src="https://github.com/user-attachments/assets/6878d398-7d66-4d15-a37a-165ae575897b" />   
 
-  💻 Client:   Sri Lanka Telecom (112.134.179.52) (Rating: 3.7★)
-  🌐 Server:   Xpress Fiber (Bhagalpur, India) [2095.18 km]
-  ⚡ Latency:  254.87 ms
 
-  📥 Download: [██████████████████████████████] 100% │  142.85 Mbit/s
-  📤 Upload:   [██████████████████████████████] 100% │   48.12 Mbit/s
-
-╭─────────────────────────────────────────────────────────────────────────╮
-│ 📊 SPEEDTEST RESULTS SUMMARY                                            │
-├─────────────────────────────────────────────────────────────────────────┤
-│                                                                         │
-│   📥 Download Speed:   142.85 Mbit/s                                     │
-│   📤 Upload Speed:     48.12 Mbit/s                                      │
-│   ⚡ Ping Latency:     254.87 ms                                        │
-│                                                                         │
-├─────────────────────────────────────────────────────────────────────────┤
-│ 💻 Client ISP:     Sri Lanka Telecom (112.134.179.52)                   │
-│ 🌐 Target Server:  Xpress Fiber - Bhagalpur, India (ID: 52563)          │
-│ 📏 Distance:       2095.18 km                                           │
-│ 🔗 Result Image:   https://www.speedtest.net/result/123456789.png       │
-╰─────────────────────────────────────────────────────────────────────────╯
-```
 
 ---
 
