@@ -90,6 +90,32 @@ source ~/.bashrc
 
 ---
 
+## 🗑️ Uninstallation
+
+If you wish to remove `speedtest-cli` / `st` from your system:
+
+### If installed via `pip`:
+```bash
+pip uninstall speedtest-cli
+```
+
+### If installed via system symlink:
+```bash
+sudo rm /usr/local/bin/st
+```
+
+### If installed via `apt`:
+```bash
+sudo apt remove speedtest-cli
+```
+
+### If installed via `pipx`:
+```bash
+pipx uninstall speedtest-cli
+```
+
+---
+
 ## 🚀 Quick Start
 
 Run a complete internet speed test using the short `st` command:
