@@ -932,6 +932,238 @@ class HTTPUploader(threading.Thread):
             self.result = 0
 
 
+
+class ModernCLIUI(object):
+    """Modern Neon CLI User Interface for speedtest-cli"""
+
+    # ANSI Colors
+    RESET = '\033[0m'
+    BOLD = '\033[1m'
+    DIM = '\033[2m'
+    CYAN = '\033[38;5;51m'
+    MAGENTA = '\033[38;5;207m'
+    GREEN = '\033[38;5;48m'
+    YELLOW = '\033[38;5;220m'
+    BLUE = '\033[38;5;39m'
+    WHITE = '\033[97m'
+    GRAY = '\033[38;5;242m'
+    CLEAR_LINE = '\033[K'
+
+    SPINNER = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']
+
+    def __init__(self, units=('bit', 1), quiet=False):
+        self.units = units
+        self.quiet = quiet
+        self.is_tty = sys.stdout.isatty() and not quiet
+        self.spin_idx = 0
+
+    def c(self, color, text):
+        if self.is_tty:
+            return '%s%s%s' % (color, text, self.RESET)
+        return str(text)
+
+    def print_banner(self):
+        if not self.is_tty:
+            return
+        box_w = 75
+        top = "╭" + "─" * (box_w - 2) + "╮"
+        bot = "╰" + "─" * (box_w - 2) + "╯"
+
+        title = self.c(self.BOLD + self.CYAN, "🚀 SPEEDTEST CLI")
+        separator = self.c(self.DIM + self.WHITE, "│")
+        subtitle = self.c(self.WHITE, "Internet Bandwidth & Network Performance")
+        
+        print("\n" + self.c(self.CYAN + self.BOLD, top))
+        print(self.c(self.CYAN + self.BOLD, "│ ") + title + "  " + separator + "  " + subtitle + " " * 11 + self.c(self.CYAN + self.BOLD, "│"))
+        print(self.c(self.CYAN + self.BOLD, bot) + "\n")
+
+    def print_client(self, client_info):
+        if not self.is_tty:
+            return
+        isp = client_info.get('isp', 'Unknown ISP')
+        ip = client_info.get('ip', 'Unknown IP')
+        rating = client_info.get('isprating', '')
+        rating_str = (' (Rating: %s★)' % rating) if rating else ''
+        print("  %s %s (%s)%s" % (
+            self.c(self.CYAN, "💻 Client:  "),
+            self.c(self.BOLD + self.WHITE, isp),
+            self.c(self.YELLOW, ip),
+            self.c(self.DIM, rating_str)
+        ))
+
+    def update_ping_animation(self, server_info=None):
+        if not self.is_tty:
+            return
+        frame = self.SPINNER[self.spin_idx % len(self.SPINNER)]
+        self.spin_idx += 1
+        server_str = "Selecting server..."
+        if server_info and isinstance(server_info, dict):
+            sponsor = server_info.get('sponsor', '')
+            name = server_info.get('name', '')
+            server_str = "%s (%s)" % (sponsor, name) if sponsor else name
+
+        sys.stdout.write("\r  %s %s %s%s" % (
+            self.c(self.MAGENTA, "📡 Latency: "),
+            self.c(self.BOLD + self.MAGENTA, "[%s]" % frame),
+            self.c(self.DIM + self.WHITE, server_str),
+            self.CLEAR_LINE
+        ))
+        sys.stdout.flush()
+
+    def finish_ping(self, server_info):
+        if not self.is_tty:
+            return
+        sponsor = server_info.get('sponsor', 'Unknown')
+        name = server_info.get('name', 'Unknown')
+        country = server_info.get('country', '')
+        distance = server_info.get('d', 0.0)
+        latency = server_info.get('latency', 0.0)
+
+        loc = ("%s, %s" % (name, country)) if country else name
+        sys.stdout.write("\r  %s %s (%s) [%.2f km]\n" % (
+            self.c(self.CYAN, "🌐 Server:  "),
+            self.c(self.BOLD + self.WHITE, sponsor),
+            self.c(self.YELLOW, loc),
+            float(distance)
+        ))
+        sys.stdout.write("  %s %s ms\n\n" % (
+            self.c(self.GREEN, "⚡ Latency: "),
+            self.c(self.BOLD + self.GREEN, "%.2f" % float(latency))
+        ))
+        sys.stdout.flush()
+
+    def render_progress_bar(self, label, icon, color, current_bytes, elapsed, total_duration=10.0):
+        if not self.is_tty:
+            return
+        if elapsed <= 0:
+            elapsed = 0.001
+
+        speed_bps = (current_bytes * 8.0) / elapsed
+        unit_label = self.units[0]
+        unit_scale = self.units[1]
+        speed_mbps = (speed_bps / 1000000.0) / unit_scale
+        unit_name = 'M%s/s' % unit_label
+
+        progress = min(1.0, elapsed / total_duration)
+        percent = int(progress * 100)
+
+        bar_width = 30
+        filled_len = int(bar_width * progress)
+        bar_filled = '█' * filled_len
+        bar_empty = '░' * (bar_width - filled_len)
+
+        label_str = self.c(color, icon + " " + label + ":")
+        bar_str = self.c(self.BOLD + color, bar_filled) + self.c(self.GRAY, bar_empty)
+        pct_str = self.c(self.BOLD + self.WHITE, "%3d%%" % percent)
+        speed_str = self.c(self.BOLD + self.WHITE, "%7.2f" % speed_mbps)
+        unit_str = self.c(self.DIM + color, unit_name)
+
+        sys.stdout.write("\r  %s %s %s │ %s %s%s" % (
+            label_str,
+            bar_str,
+            pct_str,
+            speed_str,
+            unit_str,
+            self.CLEAR_LINE
+        ))
+        sys.stdout.flush()
+
+    def finish_progress_bar(self, label, icon, color, final_speed_bps):
+        if not self.is_tty:
+            return
+        unit_label = self.units[0]
+        unit_scale = self.units[1]
+        speed_mbps = (final_speed_bps / 1000000.0) / unit_scale
+        unit_name = 'M%s/s' % unit_label
+
+        bar_filled = '█' * 30
+        label_str = self.c(color, icon + " " + label + ":")
+        bar_str = self.c(self.BOLD + color, bar_filled)
+        pct_str = self.c(self.BOLD + self.WHITE, "100%")
+        speed_str = self.c(self.BOLD + color, "%7.2f" % speed_mbps)
+        unit_str = self.c(color, unit_name)
+
+        sys.stdout.write("\r  %s %s %s │ %s %s%s\n" % (
+            label_str,
+            bar_str,
+            pct_str,
+            speed_str,
+            unit_str,
+            self.CLEAR_LINE
+        ))
+        sys.stdout.flush()
+
+    def print_results_summary(self, results, share_url=None):
+        if not self.is_tty:
+            return
+
+        unit_label = self.units[0]
+        unit_scale = self.units[1]
+        unit_name = 'M%s/s' % unit_label
+
+        dl_mbps = (results.download / 1000000.0) / unit_scale if results.download else 0.0
+        ul_mbps = (results.upload / 1000000.0) / unit_scale if results.upload else 0.0
+        ping = float(results.ping) if results.ping else 0.0
+
+        client = results.client or {}
+        server = results.server or {}
+
+        isp = client.get('isp', 'N/A')
+        ip = client.get('ip', 'N/A')
+        sponsor = server.get('sponsor', 'N/A')
+        s_name = server.get('name', 'N/A')
+        country = server.get('country', '')
+        s_id = server.get('id', 'N/A')
+        dist = float(server.get('d', 0.0))
+
+        loc = ("%s, %s" % (s_name, country)) if country else s_name
+
+        w = 75
+        top = "╭" + "─" * (w - 2) + "╮"
+        mid = "├" + "─" * (w - 2) + "┤"
+        bot = "╰" + "─" * (w - 2) + "╯"
+
+        print("\n")
+        print(self.c(self.CYAN + self.BOLD, top))
+
+        title = "  📊 SPEEDTEST RESULTS SUMMARY"
+        pad_t = w - 2 - len(title)
+        print(self.c(self.CYAN + self.BOLD, "│") + self.c(self.BOLD + self.WHITE, title) + " " * pad_t + self.c(self.CYAN + self.BOLD, "│"))
+        print(self.c(self.CYAN + self.BOLD, mid))
+
+        print(self.c(self.CYAN + self.BOLD, "│") + " " * (w - 2) + self.c(self.CYAN + self.BOLD, "│"))
+
+        def print_metric(icon, label, val_str, color):
+            lbl_part = "   %s %-18s" % (icon, label)
+            val_part = "%s" % val_str
+            raw_len = len("   X ") + 18 + len(val_part)
+            pad = max(0, w - 2 - raw_len)
+            print(self.c(self.CYAN + self.BOLD, "│") + self.c(color, lbl_part) + self.c(self.BOLD + self.WHITE, val_part) + " " * pad + self.c(self.CYAN + self.BOLD, "│"))
+
+        print_metric("📥", "Download Speed:", "%.2f %s" % (dl_mbps, unit_name), self.CYAN)
+        print_metric("📤", "Upload Speed:", "%.2f %s" % (ul_mbps, unit_name), self.MAGENTA)
+        print_metric("⚡", "Ping Latency:", "%.2f ms" % ping, self.GREEN)
+
+        print(self.c(self.CYAN + self.BOLD, "│") + " " * (w - 2) + self.c(self.CYAN + self.BOLD, "│"))
+        print(self.c(self.CYAN + self.BOLD, mid))
+
+        def print_detail(icon, label, val_str):
+            lbl_part = "  %s %-16s" % (icon, label)
+            val_truncated = str(val_str)[:48]
+            raw_len = len("  X ") + 16 + len(val_truncated)
+            pad = max(0, w - 2 - raw_len)
+            print(self.c(self.CYAN + self.BOLD, "│") + self.c(self.YELLOW, lbl_part) + self.c(self.WHITE, val_truncated) + " " * pad + self.c(self.CYAN + self.BOLD, "│"))
+
+        print_detail("💻", "Client ISP:", "%s (%s)" % (isp, ip))
+        print_detail("🌐", "Target Server:", "%s - %s (ID: %s)" % (sponsor, loc, s_id))
+        print_detail("📏", "Distance:", "%.2f km" % dist)
+        if share_url:
+            print_detail("🔗", "Result Image:", share_url)
+
+        print(self.c(self.CYAN + self.BOLD, bot))
+        print("\n")
+
+
 class SpeedtestResults(object):
     """Class for holding the results of a speedtest, including:
 
@@ -1437,7 +1669,7 @@ class Speedtest(object):
         printer('Closest Servers:\n%r' % self.closest, debug=True)
         return self.closest
 
-    def get_best_server(self, servers=None):
+    def get_best_server(self, servers=None, ping_callback=do_nothing):
         """Perform a speedtest.net "ping" to determine which speedtest.net
         server has the lowest latency
         """
@@ -1456,6 +1688,8 @@ class Speedtest(object):
 
         results = {}
         for server in servers:
+            if ping_callback is not do_nothing:
+                ping_callback(server)
             cum = []
             url = os.path.dirname(server['url'])
             stamp = int(timeit.time.time() * 1000)
@@ -1513,7 +1747,7 @@ class Speedtest(object):
         printer('Best Server:\n%r' % best, debug=True)
         return best
 
-    def download(self, callback=do_nothing, threads=None):
+    def download(self, callback=do_nothing, threads=None, progress_callback=do_nothing):
         """Test download speed against speedtest.net
 
         A ``threads`` value of ``None`` will fall back to those dictated
@@ -1535,6 +1769,7 @@ class Speedtest(object):
 
         max_threads = threads or self.config['threads']['download']
         in_flight = {'threads': 0}
+        created_threads = []
 
         def producer(q, requests, request_count):
             for i, request in enumerate(requests):
@@ -1546,6 +1781,7 @@ class Speedtest(object):
                     opener=self._opener,
                     shutdown_event=self._shutdown_event
                 )
+                created_threads.append(thread)
                 while in_flight['threads'] >= max_threads:
                     timeit.time.sleep(0.001)
                 thread.start()
@@ -1574,10 +1810,14 @@ class Speedtest(object):
         prod_thread.start()
         cons_thread.start()
         _is_alive = thread_is_alive
-        while _is_alive(prod_thread):
-            prod_thread.join(timeout=0.001)
-        while _is_alive(cons_thread):
-            cons_thread.join(timeout=0.001)
+        while _is_alive(prod_thread) or _is_alive(cons_thread):
+            prod_thread.join(timeout=0.04)
+            cons_thread.join(timeout=0.04)
+            if progress_callback is not do_nothing:
+                now = timeit.default_timer()
+                elapsed = now - start
+                cur_bytes = sum(sum(t.result) for t in created_threads)
+                progress_callback(cur_bytes, elapsed, self.config['length']['download'])
 
         stop = timeit.default_timer()
         self.results.bytes_received = sum(finished)
@@ -1588,7 +1828,7 @@ class Speedtest(object):
             self.config['threads']['upload'] = 8
         return self.results.download
 
-    def upload(self, callback=do_nothing, pre_allocate=True, threads=None):
+    def upload(self, callback=do_nothing, pre_allocate=True, threads=None, progress_callback=do_nothing):
         """Test upload speed against speedtest.net
 
         A ``threads`` value of ``None`` will fall back to those dictated
@@ -1601,13 +1841,10 @@ class Speedtest(object):
             for _ in range(0, self.config['counts']['upload']):
                 sizes.append(size)
 
-        # request_count = len(sizes)
         request_count = self.config['upload_max']
 
         requests = []
         for i, size in enumerate(sizes):
-            # We set ``0`` for ``start`` and handle setting the actual
-            # ``start`` in ``HTTPUploader`` to get better measurements
             data = HTTPUploaderData(
                 size,
                 0,
@@ -1628,6 +1865,7 @@ class Speedtest(object):
 
         max_threads = threads or self.config['threads']['upload']
         in_flight = {'threads': 0}
+        created_threads = []
 
         def producer(q, requests, request_count):
             for i, request in enumerate(requests[:request_count]):
@@ -1640,6 +1878,7 @@ class Speedtest(object):
                     opener=self._opener,
                     shutdown_event=self._shutdown_event
                 )
+                created_threads.append(thread)
                 while in_flight['threads'] >= max_threads:
                     timeit.time.sleep(0.001)
                 thread.start()
@@ -1668,10 +1907,14 @@ class Speedtest(object):
         prod_thread.start()
         cons_thread.start()
         _is_alive = thread_is_alive
-        while _is_alive(prod_thread):
-            prod_thread.join(timeout=0.1)
-        while _is_alive(cons_thread):
-            cons_thread.join(timeout=0.1)
+        while _is_alive(prod_thread) or _is_alive(cons_thread):
+            prod_thread.join(timeout=0.04)
+            cons_thread.join(timeout=0.04)
+            if progress_callback is not do_nothing:
+                now = timeit.default_timer()
+                elapsed = now - start
+                cur_bytes = sum(sum(t.request.data.total) for t in created_threads)
+                progress_callback(cur_bytes, elapsed, self.config['length']['upload'])
 
         stop = timeit.default_timer()
         self.results.bytes_sent = sum(finished)
@@ -1880,7 +2123,10 @@ def shell():
     else:
         callback = print_dots(shutdown_event)
 
-    printer('Retrieving speedtest.net configuration...', quiet)
+    ui = ModernCLIUI(units=args.units, quiet=quiet)
+    ui.print_banner()
+
+    printer('Retrieving speedtest.net configuration...', quiet or ui.is_tty)
     try:
         speedtest = Speedtest(
             source_address=args.source,
@@ -1910,11 +2156,12 @@ def shell():
                         raise
         sys.exit(0)
 
+    ui.print_client(speedtest.config['client'])
     printer('Testing from %(isp)s (%(ip)s)...' % speedtest.config['client'],
-            quiet)
+            quiet or ui.is_tty)
 
     if not args.mini:
-        printer('Retrieving speedtest.net server list...', quiet)
+        printer('Retrieving speedtest.net server list...', quiet or ui.is_tty)
         try:
             speedtest.get_servers(servers=args.server, exclude=args.exclude)
         except NoMatchedServers:
@@ -1932,51 +2179,59 @@ def shell():
             )
 
         if args.server and len(args.server) == 1:
-            printer('Retrieving information for the selected server...', quiet)
+            printer('Retrieving information for the selected server...', quiet or ui.is_tty)
         else:
-            printer('Selecting best server based on ping...', quiet)
-        speedtest.get_best_server()
+            printer('Selecting best server based on ping...', quiet or ui.is_tty)
+        speedtest.get_best_server(ping_callback=ui.update_ping_animation)
     elif args.mini:
-        speedtest.get_best_server(speedtest.set_mini_server(args.mini))
+        speedtest.get_best_server(speedtest.set_mini_server(args.mini), ping_callback=ui.update_ping_animation)
 
     results = speedtest.results
 
+    ui.finish_ping(results.server)
     printer('Hosted by %(sponsor)s (%(name)s) [%(d)0.2f km]: '
-            '%(latency)s ms' % results.server, quiet)
+            '%(latency)s ms' % results.server, quiet or ui.is_tty)
 
     if args.download:
-        printer('Testing download speed', quiet,
+        printer('Testing download speed', quiet or ui.is_tty,
                 end=('', '\n')[bool(debug)])
         speedtest.download(
             callback=callback,
-            threads=(None, 1)[args.single]
+            threads=(None, 1)[args.single],
+            progress_callback=lambda cur, el, dur: ui.render_progress_bar('Download', '📥', ui.CYAN, cur, el, dur)
         )
+        ui.finish_progress_bar('Download', '📥', ui.CYAN, results.download)
         printer('Download: %0.2f M%s/s' %
                 ((results.download / 1000.0 / 1000.0) / args.units[1],
                  args.units[0]),
-                quiet)
+                quiet or ui.is_tty)
     else:
-        printer('Skipping download test', quiet)
+        printer('Skipping download test', quiet or ui.is_tty)
 
     if args.upload:
-        printer('Testing upload speed', quiet,
+        printer('Testing upload speed', quiet or ui.is_tty,
                 end=('', '\n')[bool(debug)])
         speedtest.upload(
             callback=callback,
             pre_allocate=args.pre_allocate,
-            threads=(None, 1)[args.single]
+            threads=(None, 1)[args.single],
+            progress_callback=lambda cur, el, dur: ui.render_progress_bar('Upload  ', '📤', ui.MAGENTA, cur, el, dur)
         )
+        ui.finish_progress_bar('Upload  ', '📤', ui.MAGENTA, results.upload)
         printer('Upload: %0.2f M%s/s' %
                 ((results.upload / 1000.0 / 1000.0) / args.units[1],
                  args.units[0]),
-                quiet)
+                quiet or ui.is_tty)
     else:
-        printer('Skipping upload test', quiet)
+        printer('Skipping upload test', quiet or ui.is_tty)
 
     printer('Results:\n%r' % results.dict(), debug=True)
 
-    if not args.simple and args.share:
-        results.share()
+    share_url = None
+    if args.share:
+        share_url = results.share()
+
+    ui.print_results_summary(results, share_url)
 
     if args.simple:
         printer('Ping: %s ms\nDownload: %0.2f M%s/s\nUpload: %0.2f M%s/s' %
@@ -1990,8 +2245,8 @@ def shell():
     elif args.json:
         printer(results.json())
 
-    if args.share and not machine_format:
-        printer('Share results: %s' % results.share())
+    if args.share and not machine_format and not ui.is_tty:
+        printer('Share results: %s' % share_url)
 
 
 def main():
