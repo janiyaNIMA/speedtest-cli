@@ -34,7 +34,7 @@ Featuring interactive progress bars, real-time transfer rates, ping radar animat
 Clone the repository and install using `pip`:
 
 ```bash
-git clone https://github.com/sivel/speedtest-cli.git
+git clone https://github.com/janiyaNIMA/speedtest-cli
 cd speedtest-cli
 
 # Install for user (modern Linux / PEP 668 managed environments)
