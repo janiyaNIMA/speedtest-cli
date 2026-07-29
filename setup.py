@@ -48,11 +48,19 @@ def find_version(*file_paths):
 
 # Get the long description from the relevant file
 try:
-    f = codecs.open('README.rst', encoding='utf-8')
-    long_description = f.read()
-    f.close()
+    if os.path.exists(os.path.join(here, 'README.md')):
+        f = codecs.open(os.path.join(here, 'README.md'), encoding='utf-8')
+        long_description = f.read()
+        long_description_content_type = 'text/markdown'
+        f.close()
+    else:
+        f = codecs.open(os.path.join(here, 'README.rst'), encoding='utf-8')
+        long_description = f.read()
+        long_description_content_type = 'text/x-rst'
+        f.close()
 except:
     long_description = ''
+    long_description_content_type = 'text/plain'
 
 
 setup(
@@ -70,7 +78,8 @@ setup(
     entry_points={
         'console_scripts': [
             'speedtest=speedtest:main',
-            'speedtest-cli=speedtest:main'
+            'speedtest-cli=speedtest:main',
+            'st=speedtest:main'
         ]
     },
     classifiers=[
